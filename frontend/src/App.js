@@ -19,7 +19,7 @@ const ChatInterface = () => {
 
   useEffect(() => {
     // Establish SSE connection for chat
-    const source = new EventSource('/achat/events');
+    const source = new EventSource('/api/achat/events');
     
     source.onmessage = (event) => {
       const parsedData = JSON.parse(event.data);
@@ -57,7 +57,7 @@ const ChatInterface = () => {
     setIsTyping(true);
 
     try {
-      const response = await fetch('/achat', {
+      const response = await fetch('/api/achat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -119,7 +119,7 @@ const ChatInterface = () => {
       }
     };
 
-    xhr.open('POST', '/upload', true);
+    xhr.open('POST', '/api/upload', true);
     xhr.send(formData);
   };
 
