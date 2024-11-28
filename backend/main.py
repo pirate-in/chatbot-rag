@@ -1,18 +1,31 @@
 import asyncio
 import uuid
-from backend.schema import ChatRequest
-from backend.sse import SSEManager
-from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect
+from schema import ChatRequest
+from sse import SSEManager
+from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from fastapi.responses import StreamingResponse,JSONResponse
 import os
 import aiofiles
 import uvicorn
-from typing import List, Dict
+from typing import List
+import logging
+
+# Logging Configuration
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('app.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
 
 app = FastAPI()
 
+print("starting backend application..")
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
@@ -22,6 +35,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"message": "Internal Server Error"}
+    )
+    
 # Create upload directory
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -34,6 +55,7 @@ async def process_chat(message: ChatRequest):
     """
     Process incoming chat message and generate AI response
     """
+    logger.info("recieeve message {message.question}")
     # Simulate AI processing
     ai_response = f"AI processed: {message.question}"
     
@@ -47,6 +69,7 @@ async def chat_events():
     """
     Server-Sent Events endpoint for real-time chat updates
     """
+    logger.info("chat_events {message.question}")
     queue = asyncio.Queue()
     await sse_manager.add_client(queue)
     

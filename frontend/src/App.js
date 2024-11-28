@@ -1,13 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Send, 
-  User, 
-  Bot, 
-  Menu, 
-  MessageCircle, 
-  FileUp, 
-  Search, 
-  X 
+import {
+  Send, Bot, MessageCircle,
+  FileUp, X
 } from 'lucide-react';
 
 const ChatInterface = () => {
@@ -68,7 +62,7 @@ const ChatInterface = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ message: inputText })
+        body: JSON.stringify({ question: inputText })
       });
 
       if (!response.ok) {

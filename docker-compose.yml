@@ -9,3 +9,4 @@ services:
       - ./uploads:/app/uploads
     environment:
       - BACKEND_URL=http://localhost
+      
