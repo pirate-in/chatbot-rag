@@ -3,7 +3,6 @@ FROM node:16 AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
-RUN npm install lucide-react 
 COPY frontend ./
 RUN npm run build
 
