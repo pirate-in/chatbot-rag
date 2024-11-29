@@ -19,7 +19,8 @@ Sample application build with python as backend and react as front end and deplo
     ```sh
     docker compose -f "docker-compose.yml" up -d --build 
     ```
-1. Open the project in your browser at [`http://localhost:80`](http://localhost:ro) to view your project.
+1. Open the project in your browser at [`http://localhost`](http://localhost) to view your project.API is available at http://localhost/api/docs
+2. 
 1. Create your React components and add your styles using Tailwind classes. You can also create new CSS files and import them into your components.
 
 ## Contributing

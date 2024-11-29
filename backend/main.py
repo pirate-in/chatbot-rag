@@ -69,7 +69,6 @@ async def chat_events():
     """
     Server-Sent Events endpoint for real-time chat updates
     """
-    logger.info("chat_events {message.question}")
     queue = asyncio.Queue()
     await sse_manager.add_client(queue)
     
@@ -77,6 +76,7 @@ async def chat_events():
         try:
             while True:
                 message = await asyncio.wait_for(queue, timeout=1.0)
+                logger.info(f"message = {message}")
                 yield f"data: {message}\n\n"
         except asyncio.TimeoutError:
             pass

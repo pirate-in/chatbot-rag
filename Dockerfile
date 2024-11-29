@@ -4,10 +4,11 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
 COPY frontend ./
+RUN ls -ltr
 RUN npm run build
 
 # Backend setup
-FROM python:3.9-slim
+FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies
