@@ -6,7 +6,6 @@ import {
   FileUp, 
   X 
 } from 'lucide-react';
-import './index.css';
 const ChatInterface = () => {
   const [activeNav, setActiveNav] = useState('chat');
   const [messages, setMessages] = useState([]);
