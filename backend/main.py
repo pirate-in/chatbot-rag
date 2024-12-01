@@ -1,10 +1,11 @@
 import asyncio
+import json
 import uuid
 from schema import ChatRequest
-from sse import SSEManager
-from fastapi import FastAPI, File, UploadFile
+from sse import ChatManager, SSEManager
+from fastapi import FastAPI, File, UploadFile,Response,WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse,JSONResponse
+from fastapi.responses import JSONResponse,StreamingResponse
 import os
 import aiofiles
 import uvicorn
@@ -29,9 +30,9 @@ print("starting backend application..")
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*","http://localhost:3000/"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET","POST","PUT"],
     allow_headers=["*"],
 )
 
@@ -48,7 +49,20 @@ UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # SSE Manager for chat
+# Initialize managers
+chat_manager = ChatManager()
 sse_manager = SSEManager()
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await chat_manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await chat_manager.broadcast(data)
+    except WebSocketDisconnect:
+        await chat_manager.disconnect(websocket)
+        
 
 @app.post("/achat")
 async def process_chat(message: ChatRequest):
@@ -64,31 +78,54 @@ async def process_chat(message: ChatRequest):
     
     return {"status": "message processed"}
 
+@app.websocket("/achat")
+async def chat(websocket: WebSocket):
+    await chat_manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            p= f"data: {json.dumps({'message': data})}\n\n"
+            # Process incoming message (e.g., generate AI response)
+            await chat_manager.broadcast(f"AI Response: {data}")
+    except WebSocketDisconnect:
+        chat_manager.disconnect(websocket)
+        
+        
 @app.get("/achat/events")
-async def chat_events():
+async def sse_events():
     """
     Server-Sent Events endpoint for real-time chat updates
     """
     queue = asyncio.Queue()
     await sse_manager.add_client(queue)
-    
+    logger.info("client added to queue")
+    await queue.put(f"data: {json.dumps({'message': 'Hello Neighbour'})}\n\n")
     async def event_generator():
         try:
             while True:
+                logger.info("checking messages for client")
                 # Correct way to get a message from the queue
                 message = await asyncio.wait_for(queue.get(), timeout=1.0)
                 logger.info(f"message = {message}")
-                yield f"data: {message}\n\n"
+                yield f"data: {json.dumps({'message': message})}\n\n"
         except asyncio.TimeoutError:
             # Gracefully handle timeout
+            logger.info("Client TimeoutError")
             pass
+            #yield "data: {}\n\n"
+        except GeneratorExit:
+            logger.info("Client disconnected")
+            raise            
         except Exception as e:
             # Log any other unexpected exceptions
             logger.error(f"Error in event generator: {e}")
         finally:
             await sse_manager.remove_client(queue)
-    
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(content=event_generator(), media_type="text/event-stream",headers={
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+    })
 
 @app.post("/upload")
 async def upload_files(files: List[UploadFile] = File(...)):
@@ -116,5 +153,5 @@ async def upload_files(files: List[UploadFile] = File(...)):
     return {"files": uploaded_files}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="localhost", port=8000)
+    uvicorn.run(app, host="localhost", port=8000,timeout_keep_alive=120)
     
