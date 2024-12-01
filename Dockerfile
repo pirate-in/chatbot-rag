@@ -3,10 +3,11 @@ FROM node:16 AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
-COPY frontend ./
-RUN ls -ltr
+COPY frontend/postcss.config.js .
+COPY frontend/tailwind.config.js .
+COPY  frontend/src ./src
+COPY  frontend/public ./public
 RUN npm run build
-
 # Backend setup
 FROM python:3.11-slim
 WORKDIR /app
