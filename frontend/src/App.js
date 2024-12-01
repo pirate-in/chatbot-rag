@@ -28,7 +28,7 @@ const ChatInterface = () => {
       const parsedData = JSON.parse(event.data);
       setMessages(prev => [...prev, {
         id: Date.now(),
-        text: parsedData.message,
+        text: parsedData.question,
         sender: 'ai'
       }]);
     };
@@ -65,7 +65,7 @@ const ChatInterface = () => {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ message: inputText })
+        body: JSON.stringify({ question: inputText })
       });
 
       if (!response.ok) {

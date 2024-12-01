@@ -1,34 +1,64 @@
 import asyncio
 from fastapi import WebSocket
 from typing import List
+
 class ChatManager:
+    
     def __init__(self):
         self.active_connections: List[WebSocket] = []
         self.message_queue: asyncio.Queue = asyncio.Queue()
+        self._lock = asyncio.Lock()
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        async with self._lock:
+            self.active_connections.append(websocket)
 
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+    async def disconnect(self, websocket: WebSocket):
+        async with self._lock:
+            if websocket in self.active_connections:
+                self.active_connections.remove(websocket)
 
     async def broadcast(self, message: str):
-        for connection in self.active_connections:
-            await connection.send_text(message)
+        async with self._lock:
+            # Create a copy of active connections to avoid runtime modification
+            connections_copy = self.active_connections.copy()
+        
+        for connection in connections_copy:
+            try:
+                await connection.send_text(message)
+            except Exception as e:
+                # Log the error and potentially remove the problematic connection
+                print(f"Error broadcasting to a WebSocket: {e}")
+                try:
+                    await self.disconnect(connection)
+                except Exception:
+                    pass
             
             
 class SSEManager:
     def __init__(self):
         self.clients = set()
+        self._lock = asyncio.Lock()
 
     async def add_client(self, queue: asyncio.Queue):
-        self.clients.add(queue)
+        async with self._lock:
+            self.clients.add(queue)
 
     async def remove_client(self, queue: asyncio.Queue):
-        self.clients.remove(queue)
+        async with self._lock:
+            self.clients.discard(queue)  # Using discard instead of remove to prevent KeyError
 
     async def broadcast(self, message: str):
-        for queue in self.clients:
-            await queue.put(message)
+        async with self._lock:
+            # Create a copy of clients to avoid runtime modification during iteration
+            clients_copy = self.clients.copy()
+        
+        # Perform queue puts outside the lock to prevent blocking
+        for queue in clients_copy:
+            try:
+                await queue.put(message)
+            except Exception as e:
+                # Optional: log or handle queue put errors
+                print(f"Error broadcasting to a client: {e}")
             

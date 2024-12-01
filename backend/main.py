@@ -55,7 +55,7 @@ async def process_chat(message: ChatRequest):
     """
     Process incoming chat message and generate AI response
     """
-    logger.info("recieeve message {message.question}")
+    logger.info(f"achat message {message.question}")
     # Simulate AI processing
     ai_response = f"AI processed: {message.question}"
     
@@ -75,11 +75,16 @@ async def chat_events():
     async def event_generator():
         try:
             while True:
-                message = await asyncio.wait_for(queue, timeout=1.0)
+                # Correct way to get a message from the queue
+                message = await asyncio.wait_for(queue.get(), timeout=1.0)
                 logger.info(f"message = {message}")
                 yield f"data: {message}\n\n"
         except asyncio.TimeoutError:
+            # Gracefully handle timeout
             pass
+        except Exception as e:
+            # Log any other unexpected exceptions
+            logger.error(f"Error in event generator: {e}")
         finally:
             await sse_manager.remove_client(queue)
     
@@ -101,7 +106,7 @@ async def upload_files(files: List[UploadFile] = File(...)):
         async with aiofiles.open(file_path, 'wb') as out_file:
             content = await file.read()
             await out_file.write(content)
-        
+        4
         uploaded_files.append({
             "filename": filename,
             "original_name": file.filename,
