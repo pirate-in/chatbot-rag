@@ -6,10 +6,10 @@
   "author": "Samdani, Mohammad",
   "main": "index.js",
   "scripts": {
-    "build:css": "postcss src/main.css -o src/index.css",
-    "watch:css": "postcss src/main.css -o src/index.css",
-    "start": "npm run build:css &&react-scripts start",
-    "build": "npm run build:css && react-scripts build",
+    "build:css": "postcss src/index.css -o src/main.css",
+    "watch:css": "postcss src/index.css -o src/main.css",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
