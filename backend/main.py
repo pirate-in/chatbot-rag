@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import asynccontextmanager
 import json
 import uuid
 from schema import ChatRequest
@@ -51,19 +52,26 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # SSE Manager for chat
 # Initialize managers
-chat_manager = ChatManager()
 sse_manager = SSEManager()
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await chat_manager.connect(websocket)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    FastAPI lifespan context manager for managing application lifecycle
+    """
+    # Startup logic
+    sse_manager = SSEManager()
+    app.state.sse_manager = sse_manager
+    
     try:
-        while True:
-            data = await websocket.receive_text()
-            await chat_manager.broadcast(data)
-    except WebSocketDisconnect:
-        await chat_manager.disconnect(websocket)
-        
+        yield
+    finally:
+        # Shutdown logic
+        try:
+            await sse_manager.shutdown()
+        except Exception as e:
+            logger.error(f"Error during application shutdown: {e}")
+                    
 
 @app.post("/achat")
 async def process_chat(message: ChatRequest):
@@ -85,9 +93,8 @@ async def chat(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
-            p= f"data: {json.dumps({'message': data})}\n\n"
-            # Process incoming message (e.g., generate AI response)
-            await chat_manager.broadcast(f"AI Response: {data}")
+            p= f"{json.dumps({'data': data})}\n\n"
+            await chat_manager.broadcast(p)
     except WebSocketDisconnect:
         chat_manager.disconnect(websocket)
         

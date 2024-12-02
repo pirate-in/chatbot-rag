@@ -53,6 +53,7 @@ class SSEManager:
     def __init__(self):
         self.clients = set()
         self._lock = asyncio.Lock()
+        self.shutdown_event = asyncio.Event()
 
     async def add_client(self, queue: asyncio.Queue):
         async with self._lock:
@@ -75,3 +76,42 @@ class SSEManager:
                 # Optional: log or handle queue put errors
                 print(f"Error broadcasting to a client: {e}")
                 self.remove_client(queue)
+
+    async def shutdown(self):
+        """
+        Gracefully shut down all client connections
+        """
+        logging.info("Initiating SSE manager shutdown")
+        self.shutdown_event.set()
+        
+        # Broadcast shutdown message to all clients
+        shutdown_message = {"type": "system", "message": "Server is shutting down"}
+        for queue in self.clients.copy():
+            try:
+                queue.put_nowait(shutdown_message)
+            except Exception:
+                pass
+
+        # Wait for clients to process and close
+        await asyncio.gather(
+            *[self._close_client(client) for client in self.clients],
+            return_exceptions=True
+        )
+        
+        self.clients.clear()
+        logging.info("SSE manager shutdown complete")
+
+    async def _close_client(self, queue, timeout=5):
+        """
+        Gracefully close an individual client connection
+        """
+        try:
+            # Wait for the queue to be processed or timeout
+            await asyncio.wait_for(queue.join(), timeout=timeout)
+        except asyncio.TimeoutError:
+            logging.warning(f"Client connection did not close in time: {queue}")
+        except Exception as e:
+            logging.error(f"Error closing client connection: {e}")
+
+            
+                    
