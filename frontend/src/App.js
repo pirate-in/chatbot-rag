@@ -13,194 +13,28 @@ const ChatInterface = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [files, setFiles] = useState([]);
   const [fileProgress, setFileProgress] = useState({});
-  const [websocket, setWebSocket] = useState(null); /
-
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
-  const BASE_URL = "http://localhost:8000/"
-  //const BASE_URL = "/api/"
 
 
   // SSE Connection for Chat
   const [eventSource, setEventSource] = useState(null);
 
-  // Establish WebSocket connection when the component mounts
-  useEffect(() => {
-    const ws = new WebSocket(`${BASE_URL}achat`); // Connect to the WebSocket endpoint
-
-    // Handle incoming WebSocket messages
-    ws.onmessage = (event) => {
-      const parsedData = JSON.parse(event.data);
-      setMessages(prev => [...prev, {
-        id: Date.now(),
-        text: parsedData.message,
-        sender: 'ai'
-      }]);
-    };
-
-    // Handle WebSocket errors
-    ws.onerror = (error) => {
-      console.error("WebSocket error: ", error);
-    };
-
-    // Handle WebSocket closure
-    ws.onclose = () => {
-      console.log("WebSocket connection closed");
-    };
-
-    setWebSocket(ws); // Store the WebSocket instance
-
-    // Cleanup the WebSocket connection on unmount
-    return () => {
-      ws.close();
-    };
-  }, []); // This effect runs only once when the component mounts
-  const ChatInterface = () => {
-    const [activeNav, setActiveNav] = useState('chat');
-    const [messages, setMessages] = useState([]);
-    const [inputText, setInputText] = useState('');
-    const [isTyping, setIsTyping] = useState(false);
-    const [files, setFiles] = useState([]);
-    const [fileProgress, setFileProgress] = useState({});
-    const messagesEndRef = useRef(null);
-    const fileInputRef = useRef(null);
-  
-    const BASE_URL = "http://localhost:8000/";
-    const [websocket, setWebSocket] = useState(null); // Store the WebSocket instance
-  
-    // Establish WebSocket connection when the component mounts
-    // useEffect(() => {
-    //   const ws = new WebSocket(`${BASE_URL}achat`); // Connect to the WebSocket endpoint
-  
-    //   // Handle incoming WebSocket messages
-    //   ws.onmessage = (event) => {
-    //     const parsedData = JSON.parse(event.data);
-    //     setMessages(prev => [...prev, {
-    //       id: Date.now(),
-    //       text: parsedData.message,
-    //       sender: 'ai'
-    //     }]);
-    //   };
-  
-    //   // Handle WebSocket errors
-    //   ws.onerror = (error) => {
-    //     console.error("WebSocket error: ", error);
-    //   };
-  
-    //   // Handle WebSocket closure
-    //   ws.onclose = () => {
-    //     console.log("WebSocket connection closed");
-    //   };
-  
-    //   setWebSocket(ws); // Store the WebSocket instance
-  
-    //   // Cleanup the WebSocket connection on unmount
-    //   return () => {
-    //     ws.close();
-    //   };
-    // }, []); // This effect runs only once when the component mounts
-  
-    // const handleSendMessage = async () => {
-    //   if (inputText.trim() === '') return;
-  
-    //   const userMessage = {
-    //     id: Date.now(),
-    //     text: inputText,
-    //     sender: 'user'
-    //   };
-  
-    //   setMessages(prev => [...prev, userMessage]);
-    //   setInputText('');
-    //   setIsTyping(true);
-  
-    //   if (websocket) {
-    //     // Send the message to the WebSocket server
-    //     websocket.send(JSON.stringify({ question: inputText }));
-    //     setIsTyping(false);
-    //   }
-    // };
-  
-    // const handleFileUpload = (event) => {
-    //   const newFiles = Array.from(event.target.files);
-    //   const updatedFiles = [...files, ...newFiles];
-    //   setFiles(updatedFiles);
-  
-    //   // Track upload progress for each file
-    //   newFiles.forEach(file => uploadFile(file));
-    // };
-  
-    // const uploadFile = async (file) => {
-    //   const formData = new FormData();
-    //   formData.append('file', file);
-  
-    //   // Create a new XMLHttpRequest to track upload progress
-    //   const xhr = new XMLHttpRequest();
-      
-    //   xhr.upload.onprogress = (event) => {
-    //     if (event.lengthComputable) {
-    //       const percentComplete = Math.round((event.loaded / event.total) * 100);
-    //       setFileProgress(prev => ({
-    //         ...prev,
-    //         [file.name]: percentComplete
-    //       }));
-    //     }
-    //   };
-  
-    //   xhr.onload = () => {
-    //     if (xhr.status === 200) {
-    //       // Upload complete
-    //       setFileProgress(prev => ({
-    //         ...prev,
-    //         [file.name]: 100
-    //       }));
-    //     } else {
-    //       // Handle error
-    //       console.error('Upload failed');
-    //       setFileProgress(prev => ({
-    //         ...prev,
-    //         [file.name]: -1 // Error state
-    //       }));
-    //     }
-    //   };
-  
-    //   xhr.open('POST', BASE_URL + 'upload', true);
-    //   xhr.send(formData);
-    // };
-  
-    // const removeFile = (fileName) => {
-    //   setFiles(prev => prev.filter(file => file.name !== fileName));
-    //   const { [fileName]: removed, ...remainingProgress } = fileProgress;
-    //   setFileProgress(remainingProgress);
-    // };
-
-
   useEffect(() => {
     // Establish SSE connection for chat
-    const source = new EventSource(BASE_URL+'achat/events');
-
-    source.onopen = function() {
-      console.log("Connection established");
-  };
-
+    const source = new EventSource('/api/achat/events');
+    
     source.onmessage = (event) => {
-      console.log("Connection onmessage "+JSON.stringify(event));
       const parsedData = JSON.parse(event.data);
       setMessages(prev => [...prev, {
         id: Date.now(),
-        text: parsedData.message,
+        text: parsedData.question,
         sender: 'ai'
       }]);
     };
 
     source.onerror = (error) => {
       console.error('SSE Error:', error);
-      console.error('SSE Error readyState:', source.readyState);
-      if (source.readyState === EventSource.CLOSED) {
-        console.error("Connection closed by the server.");
-      }else if (source.readyState === EventSource.CONNECTING) {
-        console.error("Reconnecting...");
-      }
-
       source.close();
     };
 
@@ -226,7 +60,7 @@ const ChatInterface = () => {
     setIsTyping(true);
 
     try {
-      const response = await fetch(BASE_URL+'achat', {
+      const response = await fetch('/api/achat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -288,7 +122,7 @@ const ChatInterface = () => {
       }
     };
 
-    xhr.open('POST', BASE_URL+'upload', true);
+    xhr.open('POST', '/api/upload', true);
     xhr.send(formData);
   };
 
