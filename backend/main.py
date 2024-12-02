@@ -3,7 +3,7 @@ import json
 import uuid
 from schema import ChatRequest
 from sse import ChatManager, SSEManager
-from fastapi import FastAPI, File, UploadFile,Response,WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, UploadFile,Request,WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse,StreamingResponse
 import os
@@ -11,6 +11,7 @@ import aiofiles
 import uvicorn
 from typing import List
 import logging
+from sse_starlette.sse import EventSourceResponse
 
 # Logging Configuration
 logging.basicConfig(
@@ -30,7 +31,7 @@ print("starting backend application..")
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*","http://localhost:3000/"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["GET","POST","PUT"],
     allow_headers=["*"],
@@ -92,27 +93,30 @@ async def chat(websocket: WebSocket):
         
         
 @app.get("/achat/events")
-async def sse_events():
+async def sse_events(request: Request):
     """
     Server-Sent Events endpoint for real-time chat updates
     """
     queue = asyncio.Queue()
     await sse_manager.add_client(queue)
     logger.info("client added to queue")
-    await queue.put(f"data: {json.dumps({'message': 'Hello Neighbour'})}\n\n")
-    async def event_generator():
+    #await queue.put(f"data: {json.dumps({'message': 'Hello Neighbour'})}\n\n")
+    async def event_generator(request: Request):
         try:
             while True:
-                logger.info("checking messages for client")
-                # Correct way to get a message from the queue
-                message = await asyncio.wait_for(queue.get(), timeout=1.0)
-                logger.info(f"message = {message}")
-                yield f"data: {json.dumps({'message': message})}\n\n"
-        except asyncio.TimeoutError:
-            # Gracefully handle timeout
-            logger.info("Client TimeoutError")
-            pass
-            #yield "data: {}\n\n"
+                if await request.is_disconnected():
+                    logger.info("Client disconnected.")
+                    break
+                try:
+                    logger.info("checking messages for client")
+                    # Correct way to get a message from the queue
+                    message = await asyncio.wait_for(queue.get(), timeout=1.0)
+                    logger.info(f"message = {message}")
+                    yield f"data: {json.dumps({'message': message})}\n\n"
+                except asyncio.TimeoutError:
+                    logger.debug("No message in queue, continuing...")
+                    await asyncio.sleep(0.5)
+                    continue
         except GeneratorExit:
             logger.info("Client disconnected")
             raise            
@@ -121,11 +125,7 @@ async def sse_events():
             logger.error(f"Error in event generator: {e}")
         finally:
             await sse_manager.remove_client(queue)
-    return StreamingResponse(content=event_generator(), media_type="text/event-stream",headers={
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        "Connection": "keep-alive",
-    })
+    return EventSourceResponse(event_generator(request),media_type="text/event-stream")
 
 @app.post("/upload")
 async def upload_files(files: List[UploadFile] = File(...)):
@@ -153,5 +153,5 @@ async def upload_files(files: List[UploadFile] = File(...)):
     return {"files": uploaded_files}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="localhost", port=8000,timeout_keep_alive=120)
+    uvicorn.run(app, host="0.0.0.0", port=8000,timeout_keep_alive=1200)
     
