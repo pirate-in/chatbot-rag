@@ -25,10 +25,18 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+sse_manager = SSEManager()
 
 app = FastAPI()
 
-print("starting backend application..")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    try:
+        await sse_manager.shutdown()
+    except Exception as e:
+        logger.error(f"Error during application shutdown: {e}")
+                    
 # CORS Middleware
 app.add_middleware(
     CORSMiddleware,
@@ -50,27 +58,7 @@ async def global_exception_handler(request, exc):
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# SSE Manager for chat
-# Initialize managers
-sse_manager = SSEManager()
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """
-    FastAPI lifespan context manager for managing application lifecycle
-    """
-    # Startup logic
-    sse_manager = SSEManager()
-    app.state.sse_manager = sse_manager
-    
-    try:
-        yield
-    finally:
-        # Shutdown logic
-        try:
-            await sse_manager.shutdown()
-        except Exception as e:
-            logger.error(f"Error during application shutdown: {e}")
                     
 
 @app.post("/achat")
@@ -87,16 +75,7 @@ async def process_chat(message: ChatRequest):
     
     return {"status": "message processed"}
 
-@app.websocket("/achat")
-async def chat(websocket: WebSocket):
-    await chat_manager.connect(websocket)
-    try:
-        while True:
-            data = await websocket.receive_text()
-            p= f"{json.dumps({'data': data})}\n\n"
-            await chat_manager.broadcast(p)
-    except WebSocketDisconnect:
-        chat_manager.disconnect(websocket)
+
         
         
 @app.get("/achat/events")
