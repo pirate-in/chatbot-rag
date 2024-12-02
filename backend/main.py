@@ -68,7 +68,7 @@ async def process_chat(message: ChatRequest):
     """
     logger.info(f"achat message {message.question}")
     # Simulate AI processing
-    ai_response = f"AI processed: {message.question}"
+    ai_response = f"Analyzing..."
     
     # Broadcast to SSE clients
     await sse_manager.broadcast(ai_response)
@@ -98,7 +98,7 @@ async def sse_events(request: Request):
                     # Correct way to get a message from the queue
                     message = await asyncio.wait_for(queue.get(), timeout=1.0)
                     logger.info(f"message = {message}")
-                    yield f"data: {json.dumps({'message': message})}\n\n"
+                    yield f"{json.dumps({'message':message})}\n\n"
                 except asyncio.TimeoutError:
                     logger.debug("No message in queue, continuing...")
                     await asyncio.sleep(0.5)

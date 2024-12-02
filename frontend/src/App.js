@@ -15,26 +15,33 @@ const ChatInterface = () => {
   const [fileProgress, setFileProgress] = useState({});
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
-
+   const BASE_URL = "http://localhost:8000/"
 
   // SSE Connection for Chat
   const [eventSource, setEventSource] = useState(null);
 
   useEffect(() => {
     // Establish SSE connection for chat
-    const source = new EventSource('/api/achat/events');
-    
+    const source = new EventSource(`${BASE_URL}achat/events`);
+    source.timeout = 30000;
+    source.onopen = () => console.log('SSE connection opened.');
     source.onmessage = (event) => {
       const parsedData = JSON.parse(event.data);
       setMessages(prev => [...prev, {
         id: Date.now(),
-        text: parsedData.question,
+        text: parsedData.message,
         sender: 'ai'
       }]);
     };
 
     source.onerror = (error) => {
       console.error('SSE Error:', error);
+      console.error('SSE Error readyState:', source.readyState);
+      if (source.readyState === EventSource.CLOSED) {
+        console.error("Connection closed by the server.");
+      }else if (source.readyState === EventSource.CONNECTING) {
+        console.error("Reconnecting...");
+      }
       source.close();
     };
 
@@ -60,7 +67,7 @@ const ChatInterface = () => {
     setIsTyping(true);
 
     try {
-      const response = await fetch('/api/achat', {
+      const response = await fetch(`${BASE_URL}achat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -122,7 +129,7 @@ const ChatInterface = () => {
       }
     };
 
-    xhr.open('POST', '/api/upload', true);
+    xhr.open('POST', `${BASE_URL}upload`, true);
     xhr.send(formData);
   };
 
