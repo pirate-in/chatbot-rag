@@ -3,9 +3,11 @@ import {
   Send, 
   Bot, 
   MessageCircle, 
-  FileUp, 
+  FileUp, FileText,
   X 
 } from 'lucide-react';
+import {PromptLibrary} from './prompt-library';
+import PromptExecutionView from './prompt_execution_view';
 const ChatInterface = () => {
   const [activeNav, setActiveNav] = useState('chat');
   const [messages, setMessages] = useState([]);
@@ -166,7 +168,7 @@ const ChatInterface = () => {
         {isTyping && (
           <div className="flex items-center space-x-2 text-gray-500">
             <Bot className="w-6 h-6" />
-            <span>Typing...</span>
+            <span>Analyzing...</span>
           </div>
         )}
       </div>
@@ -189,7 +191,8 @@ const ChatInterface = () => {
       </div>
     </div>
   );
-
+  const renderPrompytExecutionContent = () => (<div className="p-6"><PromptExecutionView></PromptExecutionView></div>);
+  const renderLibraryContent = () => (<div className="p-6"><PromptLibrary></PromptLibrary></div>);
   const renderUploadContent = () => (
     <div className="p-6">
       <div 
@@ -282,11 +285,35 @@ const ChatInterface = () => {
             <FileUp className="w-5 h-5" />
             <span>Upload</span>
           </button>
-        </div>
+          <button 
+            onClick={() => setActiveNav('library')}
+            className={`w-full flex items-center space-x-2 p-3 rounded transition ${
+              activeNav === 'library' 
+                ? 'bg-blue-500 text-white' 
+                : 'hover:bg-gray-200 text-gray-700'
+            }`}
+          >
+            <FileText className="mr-2" />
+            <span>Prompt Library</span>
+          </button>
+          <button 
+            onClick={() => setActiveNav('prompt-execution-view')}
+            className={`w-full flex items-center space-x-2 p-3 rounded transition ${
+              activeNav === 'prompt-execution-view' 
+                ? 'bg-blue-500 text-white' 
+                : 'hover:bg-gray-200 text-gray-700'
+            }`}
+          >
+            <span>Prompt Execution</span>
+          </button>
 
+          </div>
         {/* Main Content Area */}
         <div className="flex-grow overflow-auto">
-          {activeNav === 'chat' ? renderChatContent() : renderUploadContent()}
+          {activeNav === 'chat' ? renderChatContent() : <></>}
+          {activeNav === 'upload' ? renderUploadContent() : <></>}
+          {activeNav === 'library' ? renderLibraryContent() : <></>}
+          {activeNav === 'prompt-execution-view' ? renderPrompytExecutionContent() : <></>}
         </div>
       </div>
     </div>
