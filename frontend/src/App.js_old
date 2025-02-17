@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import {PromptLibrary} from './prompt-library';
 import PromptExecutionView from './prompt_execution_view';
+
 const ChatInterface = () => {
   const [activeNav, setActiveNav] = useState('chat');
   const [messages, setMessages] = useState([]);
@@ -17,10 +18,32 @@ const ChatInterface = () => {
   const [fileProgress, setFileProgress] = useState({});
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
-   const BASE_URL = "http://localhost:8000/"
+  const BASE_URL = "http://localhost:8000/";
 
   // SSE Connection for Chat
   const [eventSource, setEventSource] = useState(null);
+
+  // Load chat history from localStorage on initial render
+  useEffect(() => {
+    const savedMessages = localStorage.getItem('chatHistory');
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages));
+    }
+  }, []);
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('chatHistory', JSON.stringify(messages));
+    }
+  }, [messages]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   useEffect(() => {
     // Establish SSE connection for chat
@@ -41,7 +64,7 @@ const ChatInterface = () => {
       console.error('SSE Error readyState:', source.readyState);
       if (source.readyState === EventSource.CLOSED) {
         console.error("Connection closed by the server.");
-      }else if (source.readyState === EventSource.CONNECTING) {
+      } else if (source.readyState === EventSource.CONNECTING) {
         console.error("Reconnecting...");
       }
       source.close();
@@ -85,6 +108,13 @@ const ChatInterface = () => {
     } catch (error) {
       console.error('Error sending message:', error);
       setIsTyping(false);
+    }
+  };
+
+  const clearChatHistory = () => {
+    if (window.confirm('Are you sure you want to clear the chat history?')) {
+      setMessages([]);
+      localStorage.removeItem('chatHistory');
     }
   };
 
@@ -171,26 +201,40 @@ const ChatInterface = () => {
             <span>Analyzing...</span>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
       
-      <div className="p-4 border-t flex items-center space-x-2">
-        <input 
-          type="text"
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-          placeholder="Type your message..."
-          className="flex-grow p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button 
-          onClick={handleSendMessage}
-          className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition"
-        >
-          <Send className="w-6 h-6" />
-        </button>
+      <div className="p-4 border-t">
+        {messages.length > 0 && (
+          <div className="mb-2 flex justify-end">
+            <button 
+              onClick={clearChatHistory}
+              className="text-red-500 text-sm hover:underline"
+            >
+              Clear Chat History
+            </button>
+          </div>
+        )}
+        <div className="flex items-center space-x-2">
+          <input 
+            type="text"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            placeholder="Type your message..."
+            className="flex-grow p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button 
+            onClick={handleSendMessage}
+            className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition"
+          >
+            <Send className="w-6 h-6" />
+          </button>
+        </div>
       </div>
     </div>
   );
+
   const renderPrompytExecutionContent = () => (<div className="p-6"><PromptExecutionView></PromptExecutionView></div>);
   const renderLibraryContent = () => (<div className="p-6"><PromptLibrary></PromptLibrary></div>);
   const renderUploadContent = () => (
@@ -253,6 +297,7 @@ const ChatInterface = () => {
       )}
     </div>
   );
+
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
@@ -306,8 +351,7 @@ const ChatInterface = () => {
           >
             <span>Prompt Execution</span>
           </button>
-
-          </div>
+        </div>
         {/* Main Content Area */}
         <div className="flex-grow overflow-auto">
           {activeNav === 'chat' ? renderChatContent() : <></>}
@@ -319,4 +363,5 @@ const ChatInterface = () => {
     </div>
   );
 };
+
 export default ChatInterface;
